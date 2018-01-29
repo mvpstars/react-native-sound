@@ -12,6 +12,9 @@ declare class Sound {
   static DOCUMENT: string
   static LIBRARY: string
   static CACHES: string
+  static RINGER_MODE: object
+
+  static ringerMode: number
 
   /**
    * Sets AVAudioSession as active, which is recommended on iOS to achieve seamless background playback.
@@ -41,6 +44,12 @@ declare class Sound {
    * @param mixWithOthers Can be set to true to force mixing with other audio sessions.
    */
   static setMode(mode: AVAudioSessionMode): void
+
+  static getRingerMode(callback: (error: object, ringerMode: number) => void)
+
+  static addRingerModeChangedListener(listener: (ringerMode: number) => void): void
+
+  static removeRingerModeChangedListener(listener: (ringerMode: number) => void): void
 
   /**
    * @param filename Either absolute or relative path to the sound file

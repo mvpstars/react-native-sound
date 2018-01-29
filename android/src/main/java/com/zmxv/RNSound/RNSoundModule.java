@@ -1,6 +1,9 @@
 package com.zmxv.RNSound;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.AssetFileDescriptor;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnCompletionListener;
@@ -15,6 +18,7 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.facebook.react.modules.core.ExceptionsManagerModule;
 
 import java.io.File;
@@ -34,10 +38,33 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
   Integer focusedPlayerKey;
   Boolean wasPlayingBeforeFocusChange;
 
+  private static final IntentFilter filter = new IntentFilter(AudioManager.RINGER_MODE_CHANGED_ACTION);
+
+  private BroadcastReceiver receiver = new BroadcastReceiver() {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+      if (intent.getAction().equals(AudioManager.RINGER_MODE_CHANGED_ACTION)) {
+        notifyRingerModeChanged(intent.getExtras().getInt(AudioManager.EXTRA_RINGER_MODE));
+      }
+    }
+  };
+
   public RNSoundModule(ReactApplicationContext context) {
     super(context);
     this.context = context;
     this.category = null;
+  }
+
+  @Override
+  public void initialize() {
+    super.initialize();
+    this.context.registerReceiver(receiver, filter);
+  }
+
+  @Override
+  public void onCatalystInstanceDestroy() {
+    this.context.unregisterReceiver(receiver);
+    super.onCatalystInstanceDestroy();
   }
 
   @Override
@@ -320,6 +347,16 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
   }
 
   @ReactMethod
+  public void getRingerMode(Callback callback) {
+    try {
+      AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+      callback.invoke(null, audioManager.getRingerMode());
+    } catch (Exception error) {
+      callback.invoke(error);
+    }
+  }
+
+  @ReactMethod
   public void setLooping(final Integer key, final Boolean looping) {
     MediaPlayer player = this.playerPool.get(key);
     if (player != null) {
@@ -406,6 +443,13 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
   public Map<String, Object> getConstants() {
     final Map<String, Object> constants = new HashMap<>();
     constants.put("IsAndroid", true);
+    constants.put("SILENT", AudioManager.RINGER_MODE_SILENT);
+    constants.put("VIBRATE", AudioManager.RINGER_MODE_VIBRATE);
+    constants.put("NORMAL", AudioManager.RINGER_MODE_NORMAL);
     return constants;
+  }
+
+  private void notifyRingerModeChanged(int ringerMode) {
+    this.context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("RingerModeChanged", ringerMode);
   }
 }

@@ -1,9 +1,12 @@
 'use strict';
 
+var DeviceEventEmitter = require('react-native').DeviceEventEmitter;
 var RNSound = require('react-native').NativeModules.RNSound;
 var IsAndroid = RNSound.IsAndroid;
 var IsWindows = RNSound.IsWindows;
 var resolveAssetSource = require("react-native/Libraries/Image/resolveAssetSource");
+
+var RINGER_MODE_CHANGED = 'RingerModeChanged';
 
 function isRelativePath(path) {
   return !/^(\/|http(s?)|asset)/.test(path);
@@ -193,6 +196,27 @@ Sound.prototype.setSpeakerphoneOn = function(value) {
   }
 };
 
+Sound.RINGER_MODE = {
+  SILENT: RNSound.SILENT,
+  VIBRATE: RNSound.VIBRATE,
+  NORMAL: RNSound.NORMAL
+};
+
+Sound.getRingerMode = function(callback) {
+  if(IsAndroid) {
+    RNSound.getRingerMode(callback);
+  }
+  return null;
+};
+
+Sound.addRingerModeChangedListener = function(listener) {
+  return DeviceEventEmitter.addListener(RINGER_MODE_CHANGED, listener);
+};
+
+Sound.removeRingerModeChangedListener = function(listener) {
+  DeviceEventEmitter.removeListener(RINGER_MODE_CHANGED, listener);
+};
+
 // ios only
 
 // This is deprecated.  Call the static one instead.
@@ -233,5 +257,21 @@ Sound.MAIN_BUNDLE = RNSound.MainBundlePath;
 Sound.DOCUMENT = RNSound.NSDocumentDirectory;
 Sound.LIBRARY = RNSound.NSLibraryDirectory;
 Sound.CACHES = RNSound.NSCachesDirectory;
+
+if (IsAndroid) {
+  Sound.ringerMode = null;
+  var setRingerMode = function(ringerMode) {
+    Sound.ringerMode = ringerMode;
+  };
+  Sound.getRingerMode(function(error, ringerMode) {
+    if (error) {
+      setRingerMode(null);
+      console.error(error);
+    } else {
+      setRingerMode(ringerMode);
+    }
+  });
+  Sound.addRingerModeChangedListener(setRingerMode);
+}
 
 module.exports = Sound;
